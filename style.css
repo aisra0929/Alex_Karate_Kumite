@@ -1,139 +1,309 @@
-/* Basic Reset */
+:root {
+    --color-ao: #0056b3; /* Slightly deeper blue */
+    --color-aka: #c82333; /* Slightly deeper red */
+    --color-yellow: #ffc107;
+    --color-dark: #1a1a1a;
+    --color-bg: #000000;
+    --color-light: #ffffff;
+    --font-size-score: 90px;
+}
+
 body {
-  margin: 0;
-  padding: 0;
-  font-family: 'Arial', sans-serif;
-  background: #000;
-  color: white;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
+    background-color: var(--color-bg);
+    color: var(--color-light);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
 }
 
-/* Scoreboard container */
+/* --- HEADERS & INPUTS --- */
+.main-title {
+    font-size: 2.5rem;
+    margin: 10px 0;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    text-shadow: 0 0 10px rgba(255,255,255,0.3);
+}
+
+.referee-container {
+    margin-bottom: 15px;
+    width: 300px;
+}
+
+.referee-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #555;
+    color: #aaa;
+    text-align: center;
+    font-size: 1.2rem;
+    padding: 5px;
+    outline: none;
+}
+.referee-input:focus { border-bottom-color: var(--color-yellow); color: white; }
+
+/* --- SCOREBOARD CONTAINER --- */
 .scoreboard {
-  width: 100%;
-  max-width: 900px;
-  background: #111;
-  padding: 20px;
-  border-radius: 10px;
-  text-align: center;
+    width: 950px;
+    border: 3px solid #333;
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+    background-color: var(--color-dark);
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);
 }
 
-/* Logo */
-.logo img {
-  max-height: 50px;
-  margin-bottom: 10px;
+/* --- TOP SECTION (SCORES) --- */
+.top-section {
+    display: flex;
+    justify-content: space-between;
+    height: 220px;
 }
 
-/* Players */
-.players {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 20px;
+.team {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    position: relative;
+    border: 1px solid #333;
 }
 
-.player {
-  width: 45%;
+.ao { background-color: #000; border-left: 5px solid var(--color-ao); }
+.aka { background-color: #000; border-right: 5px solid var(--color-aka); }
+
+/* Inner Layouts */
+.team-info {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
-.player-header {
-  display: flex;
-  justify-content: space-between;
-  background: #007bff;
-  padding: 5px;
-  border-radius: 5px 5px 0 0;
+.team-name-input {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-align: center;
+    width: 80%;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+.ao .team-name-input { background-color: var(--color-ao); padding: 2px 5px; border-radius: 4px; }
+.aka .team-name-input { background-color: var(--color-aka); padding: 2px 5px; border-radius: 4px; }
+
+.score-display {
+    font-size: var(--font-size-score);
+    line-height: 1;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    padding: 10px 20px;
+    border: 2px solid #333;
+    background-color: #0a0a0a;
+    width: 120px;
+    text-align: center;
 }
 
-.player.aka .player-header { background: #ff3b3b; }
-
-.label {
-  font-weight: bold;
-  padding: 0 5px;
+/* Buttons Column */
+.points-buttons {
+    display: flex;
+    flex-direction: column;
+    width: 80px;
+    height: 100%;
 }
 
-.player-name {
-  background: white;
-  border: none;
-  color: black;
-  font-weight: bold;
-  text-align: center;
-  width: 60px;
+.score-btn {
+    flex: 1;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    color: white;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(0,0,0,0.2);
+    transition: filter 0.2s;
+}
+.score-btn:hover { filter: brightness(1.2); }
+
+/* Coloring buttons based on team context */
+.ao .score-btn { background-color: var(--color-ao); }
+.aka .score-btn { background-color: var(--color-aka); }
+
+/* Senshu */
+.senshu-container {
+    width: 80px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    background-color: #111;
 }
 
-/* Score Box */
-.score-box {
-  background: #000;
-  color: #fff;
-  font-size: 60px;
-  margin-top: 5px;
-  padding: 20px 0;
-  border-radius: 5px;
+.senshu-indicator {
+    width: 50px;
+    height: 50px;
+    background-color: #333;
+    border-radius: 50%;
+    color: #000;
+    font-size: 2rem;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s;
 }
 
-/* Controls */
-.controls {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.senshu-indicator.active {
+    background-color: var(--color-yellow);
+    box-shadow: 0 0 15px var(--color-yellow);
 }
 
-/* Points buttons */
-.points {
-  display: grid;
-  grid-template-columns: repeat(3, 60px);
-  grid-gap: 5px;
+/* Center Spacer */
+.center-spacer {
+    width: 40px;
+    background-color: #222;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-left: 1px solid #444;
+    border-right: 1px solid #444;
+}
+.swap-btn {
+    background: none; border: none; color: #777; font-size: 24px; cursor: pointer;
+}
+.swap-btn:hover { color: white; }
+
+/* --- BOTTOM SECTION (PENALTIES & TIMER) --- */
+.bottom-section {
+    display: flex;
+    height: 160px;
+    border-top: 2px solid #444;
 }
 
-.points button {
-  background: #222;
-  color: #fff;
-  border: 2px solid yellow;
-  font-weight: bold;
-  padding: 10px;
-  border-radius: 5px;
-  cursor: pointer;
+.penalty-grid {
+    flex: 1.3;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(2, 1fr);
 }
 
-.points button.penalty {
-  background: yellow;
-  color: red;
-  grid-column: span 1;
+.penalty-btn {
+    background-color: #000;
+    color: white;
+    border: 1px solid #333;
+    font-weight: bold;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+.penalty-btn:hover { background-color: #222; }
+.penalty-btn.active { background-color: var(--color-yellow); color: black; }
+
+/* Special Penalty Colors */
+.minus, .plus { background-color: var(--color-aka); }
+.h, .hc, .s-btn, .k-btn { background-color: #111; }
+.h.active, .hc.active, .s-btn.active, .k-btn.active { background-color: red; color: white; }
+
+/* Center Timer Area */
+.time-center {
+    flex: 1;
+    background-color: #222;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-left: 2px solid #444;
+    border-right: 2px solid #444;
 }
 
-/* Timer section */
-.timer-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin: 0 20px;
+.center-logo {
+    height: 50px;
+    margin-bottom: 10px;
+    opacity: 0.8;
 }
 
-.timer-section #time {
-  font-size: 50px;
-  background: #555;
-  padding: 10px 20px;
-  border-radius: 5px;
-  margin: 10px 0;
+.timer-container {
+    background-color: black;
+    padding: 5px 15px;
+    border: 2px solid #555;
+    border-radius: 5px;
 }
 
-.timer-section button {
-  background: #ff3b3b;
-  color: white;
-  border: none;
-  font-size: 25px;
-  width: 50px;
-  height: 50px;
-  margin: 5px 0;
-  border-radius: 5px;
-  cursor: pointer;
+#timer {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #00ffcc;
+    font-family: 'Courier New', monospace;
 }
 
-.winning-gap {
-  background: #ff3b3b;
-  padding: 5px 10px;
-  margin-top: 10px;
-  border-radius: 5px;
-  font-weight: bold;
+/* --- SEPARATE CONTROLS SECTION --- */
+.controls-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 20px;
+    gap: 20px;
+    background-color: #111;
+    padding: 15px 30px;
+    border-radius: 50px;
+    border: 1px solid #333;
+}
+
+.ctrl-btn {
+    background: #333;
+    color: white;
+    border: none;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ctrl-btn:hover { background: #555; }
+
+.big-play {
+    width: 70px;
+    height: 70px;
+    font-size: 2rem;
+    background-color: var(--color-yellow);
+    color: black;
+}
+.big-play:hover { background-color: #e0a800; }
+
+.winning-gap-info {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #aaa;
+    font-family: monospace;
+    padding: 0 15px;
+    border-left: 1px solid #444;
+    border-right: 1px solid #444;
+}
+
+/* --- TOOLTIP --- */
+[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,255,255,0.9);
+    color: black;
+    padding: 4px 8px;
+    font-size: 12px;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 100;
 }
