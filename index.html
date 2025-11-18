@@ -5,39 +5,67 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Karate Scoreboard</title>
   <link rel="stylesheet" href="style.css">
+  <!-- Favicon placeholder -->
+  <link id="favicon" rel="icon" href="favicon.ico" type="image/x-icon">
 </head>
 <body>
   <div class="scoreboard">
-    <h1>Karate Scoreboard</h1>
+
+    <!-- Logo placeholder -->
+    <div class="logo">
+      <img id="logo" src="logo.png" alt="Logo">
+    </div>
+
+    <!-- Player Scores -->
     <div class="players">
-      <div class="player" id="playerA">
-        <h2>AO</h2>
-        <div class="score" id="scoreA">0</div>
-        <div class="buttons">
-          <button class="add-score" data-player="A" data-points="1">+1</button>
-          <button class="add-score" data-player="A" data-points="2">+2</button>
-          <button class="add-score" data-player="A" data-points="3">Ippon</button>
+      <div class="player ao">
+        <div class="player-header">
+          <span class="label">AO</span>
+          <input type="text" value="AO" class="player-name">
         </div>
+        <div class="score-box">0</div>
       </div>
-      <div class="player" id="playerB">
-        <h2>AKA</h2>
-        <div class="score" id="scoreB">0</div>
-        <div class="buttons">
-          <button class="add-score" data-player="B" data-points="1">+1</button>
-          <button class="add-score" data-player="B" data-points="2">+2</button>
-          <button class="add-score" data-player="B" data-points="3">Ippon</button>
+
+      <div class="player aka">
+        <div class="player-header">
+          <span class="label">AKA</span>
+          <input type="text" value="AKA" class="player-name">
         </div>
+        <div class="score-box">0</div>
       </div>
     </div>
-    <div class="timer">
-      <div id="time">03:00</div>
-      <div class="timer-buttons">
-        <button id="start">Start</button>
-        <button id="pause">Pause</button>
-        <button id="reset">Reset</button>
+
+    <!-- Score Buttons & Penalties -->
+    <div class="controls">
+      <div class="points ao-points">
+        <button>1C</button>
+        <button>2C</button>
+        <button>3C</button>
+        <button>HC</button>
+        <button>H</button>
+        <button>S</button>
+        <button class="penalty">K</button>
+      </div>
+
+      <div class="timer-section">
+        <button class="minus">-</button>
+        <div id="time">02:00</div>
+        <button class="plus">+</button>
+        <div class="winning-gap">Winning Gap: 6</div>
+      </div>
+
+      <div class="points aka-points">
+        <button>1C</button>
+        <button>2C</button>
+        <button>3C</button>
+        <button>HC</button>
+        <button>H</button>
+        <button>S</button>
+        <button class="penalty">K</button>
       </div>
     </div>
   </div>
+
   <script src="script.js"></script>
 </body>
 </html>
