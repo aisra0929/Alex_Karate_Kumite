@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Karate Scoreboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="scoreboard">
+    <h1>Karate Scoreboard</h1>
+    <div class="players">
+      <div class="player" id="playerA">
+        <h2>AO</h2>
+        <div class="score" id="scoreA">0</div>
+        <div class="buttons">
+          <button class="add-score" data-player="A" data-points="1">+1</button>
+          <button class="add-score" data-player="A" data-points="2">+2</button>
+          <button class="add-score" data-player="A" data-points="3">Ippon</button>
+        </div>
+      </div>
+      <div class="player" id="playerB">
+        <h2>AKA</h2>
+        <div class="score" id="scoreB">0</div>
+        <div class="buttons">
+          <button class="add-score" data-player="B" data-points="1">+1</button>
+          <button class="add-score" data-player="B" data-points="2">+2</button>
+          <button class="add-score" data-player="B" data-points="3">Ippon</button>
+        </div>
+      </div>
+    </div>
+    <div class="timer">
+      <div id="time">03:00</div>
+      <div class="timer-buttons">
+        <button id="start">Start</button>
+        <button id="pause">Pause</button>
+        <button id="reset">Reset</button>
+      </div>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

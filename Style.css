@@ -1,0 +1,82 @@
+body {
+  font-family: 'Arial', sans-serif;
+  background: #f0f4f8;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+
+.scoreboard {
+  background: #fff;
+  padding: 20px 30px;
+  border-radius: 15px;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+  text-align: center;
+  width: 350px;
+}
+
+h1 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.players {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.player {
+  flex: 1;
+  margin: 0 10px;
+}
+
+.score {
+  font-size: 48px;
+  margin: 10px 0;
+  color: #007bff;
+}
+
+.buttons button {
+  display: block;
+  margin: 5px auto;
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #007bff;
+  color: white;
+  transition: 0.2s;
+}
+
+.buttons button:hover {
+  background: #0056b3;
+}
+
+.timer {
+  margin-top: 20px;
+}
+
+#time {
+  font-size: 36px;
+  margin-bottom: 10px;
+}
+
+.timer-buttons button {
+  margin: 5px;
+  padding: 10px 15px;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #28a745;
+  color: white;
+  transition: 0.2s;
+}
+
+.timer-buttons button:hover {
+  background: #1e7e34;
+}
