@@ -1,173 +1,754 @@
-// --- STATE VARIABLES ---
-let aoScore = 0;
-let akaScore = 0;
-const MAX_TIME = 180; // 3 minutes
-let currentTime = MAX_TIME;
-let timerInterval = null;
-let isTimerRunning = false;
-const WINNING_GAP = 6; 
+document.addEventListener('DOMContentLoaded', () => {
+    const MATCH_DURATIONS = [
+        '00:30', '01:00', '01:30', '02:00', '02:30',
+        '03:00', '03:30', '04:00', '04:30', '05:00',
+    ];
+    const WEIGHT_CLASSES = {
+        Male: ['-60 kg', '-67 kg', '-75 kg', '-84 kg', '+84 kg'],
+        Female: ['-50 kg', '-55 kg', '-61 kg', '-68 kg', '+68 kg'],
+    };
+    const STORAGE_KEY = 'ekfScoreboardLogs';
+    const GAP_LIMIT = 8;
+    const PDF_LINE_LIMIT = 90;
+    const PDF_PAGE = { width: 612, height: 792, margin: 50, lineHeight: 14 };
 
-// --- DOM ELEMENTS ---
-const aoScoreDisplay = document.getElementById('ao-score');
-const akaScoreDisplay = document.getElementById('aka-score');
-const timerDisplay = document.getElementById('timer');
-const startPauseBtn = document.getElementById('start-pause-btn');
-const resetTimerBtn = document.getElementById('reset-timer-btn');
-const fullscreenBtn = document.getElementById('fullscreen-btn');
-const aoSenshuBtn = document.getElementById('ao-senshu');
-const akaSenshuBtn = document.getElementById('aka-senshu');
-const winningGapValue = document.getElementById('winning-gap-value');
+    const els = {
+        setupOverlay: document.getElementById('setup-screen'),
+        playerCountSelect: document.getElementById('player-count-select'),
+        playerGrid: document.getElementById('player-name-grid'),
+        matchDurationSelect: document.getElementById('match-duration-select'),
+        genderSelect: document.getElementById('gender-select'),
+        weightSelect: document.getElementById('weight-class-select'),
+        startTournamentBtn: document.getElementById('start-tournament-btn'),
+        historyTriggers: document.querySelectorAll('[data-history-trigger], #history-btn'),
+        roundBanner: document.getElementById('round-banner'),
+        roundNumber: document.getElementById('round-number'),
+        aoNameInput: document.getElementById('ao-name-input'),
+        akaNameInput: document.getElementById('aka-name-input'),
+        aoScore: document.getElementById('ao-score'),
+        akaScore: document.getElementById('aka-score'),
+        aoSenshu: document.getElementById('ao-senshu'),
+        akaSenshu: document.getElementById('aka-senshu'),
+        scoreButtons: document.querySelectorAll('.score-btn'),
+        penaltyButtons: document.querySelectorAll('.penalty-btn'),
+        startPauseBtn: document.getElementById('start-pause-btn'),
+        resetBtn: document.getElementById('reset-timer-btn'),
+        timerDisplay: document.getElementById('timer'),
+        fullscreenBtn: document.getElementById('fullscreen-btn'),
+        scoreboardUi: document.getElementById('scoreboard-ui'),
+        swapBtn: document.getElementById('swap-sides-btn'),
+        historyModal: document.getElementById('history-modal'),
+        historyList: document.getElementById('history-list'),
+        historyPreview: document.getElementById('history-preview'),
+        historyClose: document.querySelector('[data-close-history]'),
+        eraseHistoryBtn: document.getElementById('erase-history-btn'),
+        winnerModal: document.getElementById('winner-modal'),
+        winnerModalClose: document.getElementById('winner-modal-close'),
+        winnerTitle: document.getElementById('winner-title'),
+        winnerMessage: document.getElementById('winner-message'),
+        winnerDeclareAo: document.getElementById('declare-ao-winner'),
+        winnerDeclareAka: document.getElementById('declare-aka-winner'),
+        winnerNextBtn: document.getElementById('winner-modal-next'),
+        winnerActions: document.querySelector('.winner-actions'),
+        bracketGrid: document.getElementById('bracket-grid'),
+        bracketStatus: document.getElementById('bracket-status'),
+        refereeInput: document.getElementById('referee-input'),
+    };
 
-// Icons for Play/Pause
-const PLAY_ICON = '&#9658;'; // Triangle
-const PAUSE_ICON = '&#10074;&#10074;'; // Double Vertical Bars
+    const state = {
+        timer: {
+            duration: 120,
+            remaining: 120,
+            ticking: false,
+            intervalId: null,
+        },
+        scores: { ao: 0, aka: 0 },
+        penalties: { ao: [], aka: [] },
+        roundCount: 1,
+        logBuffer: [],
+        matchStartTime: null,
+        tournament: {
+            playerCount: 0,
+            players: [],
+            rounds: [],
+            active: { roundIndex: 0, matchIndex: 0 },
+            division: { gender: 'Male', weightClass: WEIGHT_CLASSES.Male[0] },
+        },
+        controlsLocked: true,
+    };
 
-// --- FUNCTIONS ---
+    /**
+     * Utility helpers
+     */
+    const secondsFromLabel = (label) => {
+        const [m, s] = label.split(':').map(Number);
+        return (m * 60) + s;
+    };
 
-function updateScore(team, points) {
-    if (team === 'ao') {
-        aoScore = Math.max(0, aoScore + points);
-        aoScoreDisplay.textContent = aoScore;
-    } else if (team === 'aka') {
-        akaScore = Math.max(0, akaScore + points);
-        akaScoreDisplay.textContent = akaScore;
-    }
-    checkWinningGap();
-}
+    const formatClock = (totalSeconds) => {
+        const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+        const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+        return `${minutes}:${seconds}`;
+    };
 
-function checkWinningGap() {
-    const scoreDifference = Math.abs(aoScore - akaScore);
-    
-    // Highlight the gap text if close or met
-    if (scoreDifference >= WINNING_GAP) {
-        timerDisplay.style.color = "red"; 
-        winningGapValue.style.color = "red";
-    } else {
-        timerDisplay.style.color = "#00ffcc";
-        winningGapValue.style.color = "#aaa";
-    }
-}
+    const showToast = (text) => {
+        els.roundBanner.textContent = text;
+        els.roundBanner.classList.remove('hidden');
+        requestAnimationFrame(() => els.roundBanner.classList.add('visible'));
+        setTimeout(() => {
+            els.roundBanner.classList.remove('visible');
+            setTimeout(() => els.roundBanner.classList.add('hidden'), 300);
+        }, 2500);
+    };
 
-function formatTime(totalSeconds) {
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-}
-
-function countdown() {
-    if (currentTime <= 0) {
-        clearInterval(timerInterval);
-        isTimerRunning = false;
-        timerDisplay.textContent = "00:00";
-        timerDisplay.style.color = "red";
-        startPauseBtn.innerHTML = PLAY_ICON;
-        return;
-    }
-    currentTime--;
-    timerDisplay.textContent = formatTime(currentTime);
-}
-
-function toggleTimer() {
-    if (isTimerRunning) {
-        // PAUSE
-        clearInterval(timerInterval);
-        startPauseBtn.innerHTML = PLAY_ICON;
-    } else {
-        // START
-        if (currentTime > 0) {
-            timerInterval = setInterval(countdown, 1000);
-            startPauseBtn.innerHTML = PAUSE_ICON;
+    /**
+     * Setup screen
+     */
+    const renderPlayerInputs = () => {
+        const count = Number(els.playerCountSelect.value);
+        els.playerGrid.innerHTML = '';
+        for (let i = 1; i <= count; i += 1) {
+            const wrapper = document.createElement('label');
+            wrapper.className = 'player-input';
+            wrapper.innerHTML = `
+                Player ${i}
+                <input type="text" data-player-index="${i - 1}" placeholder="Enter name">
+            `;
+            els.playerGrid.appendChild(wrapper);
         }
-    }
-    isTimerRunning = !isTimerRunning;
-}
+    };
 
-function resetMatch() {
-    clearInterval(timerInterval);
-    isTimerRunning = false;
-    startPauseBtn.innerHTML = PLAY_ICON;
-    
-    // Reset Scores
-    aoScore = 0;
-    akaScore = 0;
-    aoScoreDisplay.textContent = '0';
-    akaScoreDisplay.textContent = '0';
-    
-    // Reset Timer
-    currentTime = MAX_TIME;
-    timerDisplay.textContent = formatTime(currentTime);
-    timerDisplay.style.color = "#00ffcc";
-    winningGapValue.style.color = "#aaa";
-
-    // Reset Senshu
-    aoSenshuBtn.classList.remove('active');
-    akaSenshuBtn.classList.remove('active');
-
-    // Reset Penalties
-    document.querySelectorAll('.penalty-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-}
-
-function toggleSenshu(team) {
-    if (team === 'ao') {
-        if (aoSenshuBtn.classList.contains('active')) {
-            aoSenshuBtn.classList.remove('active');
-        } else {
-            aoSenshuBtn.classList.add('active');
-            akaSenshuBtn.classList.remove('active'); // Exclusive
-        }
-    } else {
-        if (akaSenshuBtn.classList.contains('active')) {
-            akaSenshuBtn.classList.remove('active');
-        } else {
-            akaSenshuBtn.classList.add('active');
-            aoSenshuBtn.classList.remove('active'); // Exclusive
-        }
-    }
-}
-
-// --- EVENT LISTENERS ---
-
-// Score Buttons
-document.querySelectorAll('.score-btn').forEach(button => {
-    button.addEventListener('click', (e) => {
-        const team = e.currentTarget.dataset.team;
-        const points = parseInt(e.currentTarget.dataset.points);
-        updateScore(team, points);
-    });
-});
-
-// Senshu Buttons
-aoSenshuBtn.addEventListener('click', () => toggleSenshu('ao'));
-akaSenshuBtn.addEventListener('click', () => toggleSenshu('aka'));
-
-// Penalty Buttons
-document.querySelectorAll('.penalty-btn').forEach(button => {
-    button.addEventListener('click', (e) => {
-        e.currentTarget.classList.toggle('active');
-    });
-});
-
-// Controls
-startPauseBtn.addEventListener('click', toggleTimer);
-resetTimerBtn.addEventListener('click', () => {
-    if(confirm("Are you sure you want to reset the match?")) {
-        resetMatch();
-    }
-});
-
-fullscreenBtn.addEventListener('click', () => {
-    if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(e => {
-            console.log(`Error enabling fullscreen mode: ${e.message} (${e.name})`);
+    const populateMatchDurations = () => {
+        const fragment = document.createDocumentFragment();
+        MATCH_DURATIONS.forEach((label) => {
+            const opt = document.createElement('option');
+            opt.value = label;
+            opt.textContent = label;
+            if (label === '02:00') opt.selected = true;
+            fragment.appendChild(opt);
         });
-    } else {
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
+        els.matchDurationSelect.appendChild(fragment);
+    };
+
+    const populateWeightClasses = (gender) => {
+        const classes = WEIGHT_CLASSES[gender] || [];
+        els.weightSelect.innerHTML = '';
+        classes.forEach((label, index) => {
+            const opt = document.createElement('option');
+            opt.value = label;
+            opt.textContent = label;
+            if (index === 0) opt.selected = true;
+            els.weightSelect.appendChild(opt);
+        });
+    };
+
+    const syncDivisionSelection = () => {
+        state.tournament.division = {
+            gender: els.genderSelect.value,
+            weightClass: els.weightSelect.value,
+        };
+    };
+
+    const gatherPlayerNames = () => {
+        const inputs = els.playerGrid.querySelectorAll('input');
+        return Array.from(inputs).map((input, index) => input.value.trim() || `Player ${index + 1}`);
+    };
+
+    const createInitialBracket = (players) => {
+        const rounds = [];
+        let currentPlayers = players.map((name, idx) => ({ name, seed: idx + 1 }));
+        let roundIndex = 0;
+
+        while (currentPlayers.length > 1) {
+            const roundMatches = [];
+            for (let i = 0; i < currentPlayers.length; i += 2) {
+                roundMatches.push({
+                    id: `R${roundIndex + 1}-M${(i / 2) + 1}`,
+                    players: [currentPlayers[i] || null, currentPlayers[i + 1] || null],
+                    winner: null,
+                    complete: false,
+                });
+            }
+            rounds.push(roundMatches);
+            currentPlayers = roundMatches.map(() => ({ name: 'TBD', seed: null }));
+            roundIndex += 1;
         }
+
+        state.tournament.rounds = rounds;
+    };
+
+    const renderBracket = () => {
+        const { rounds } = state.tournament;
+        els.bracketGrid.innerHTML = '';
+        rounds.forEach((matches, roundIdx) => {
+            const column = document.createElement('div');
+            column.className = 'round-column';
+            const title = document.createElement('h4');
+            title.textContent = `Round ${roundIdx + 1}`;
+            column.appendChild(title);
+
+            matches.forEach((match) => {
+                const card = document.createElement('div');
+                card.className = `match-card ${match.winner ? 'winner-known' : ''}`;
+                card.innerHTML = `
+                    <div class="match-title">${match.id}</div>
+                    <div class="competitor">${match.players[0]?.name || 'TBD'} <span>${match.winner === 0 ? '✔' : ''}</span></div>
+                    <div class="competitor">${match.players[1]?.name || 'TBD'} <span>${match.winner === 1 ? '✔' : ''}</span></div>
+                `;
+                column.appendChild(card);
+            });
+            els.bracketGrid.appendChild(column);
+        });
+        const division = state.tournament.division;
+        const divisionLabel = division ? ` • ${division.gender} ${division.weightClass}` : '';
+        els.bracketStatus.textContent = `Round ${state.tournament.active.roundIndex + 1} • Match ${state.tournament.active.matchIndex + 1}${divisionLabel}`;
+    };
+
+    /**
+     * Scoreboard helpers
+     */
+    const updateScoreDisplays = () => {
+        els.aoScore.textContent = state.scores.ao;
+        els.akaScore.textContent = state.scores.aka;
+    };
+
+    const resetPenalties = () => {
+        els.penaltyButtons.forEach((btn) => btn.classList.remove('active'));
+        state.penalties = { ao: [], aka: [] };
+    };
+
+    const resetSenshu = () => {
+        [els.aoSenshu, els.akaSenshu].forEach((indicator) => indicator.classList.remove('active'));
+    };
+
+    const resetScores = () => {
+        state.scores = { ao: 0, aka: 0 };
+        updateScoreDisplays();
+    };
+
+    const updateTimerDisplay = () => {
+        els.timerDisplay.textContent = formatClock(state.timer.remaining);
+    };
+
+    const setTimerDuration = (seconds) => {
+        state.timer.duration = seconds;
+        state.timer.remaining = seconds;
+        updateTimerDisplay();
+    };
+
+    const lockControls = (locked) => {
+        state.controlsLocked = locked;
+        [...els.scoreButtons, ...els.penaltyButtons, els.swapBtn, els.aoSenshu, els.akaSenshu].forEach((el) => {
+            el.disabled = locked;
+            el.classList.toggle('disabled', locked);
+        });
+    };
+
+    const startTimer = () => {
+        if (state.timer.ticking || state.controlsLocked) return;
+        state.timer.ticking = true;
+        state.matchStartTime = state.matchStartTime || new Date();
+        els.startPauseBtn.innerHTML = '&#10074;&#10074;';
+        state.timer.intervalId = setInterval(() => {
+            if (state.timer.remaining <= 0) {
+                stopTimer();
+                const winner = decideWinnerByScore();
+                if (winner) {
+                    declareWinner(winner, 'Time elapsed');
+                } else {
+                    lockControls(true);
+                    els.winnerTitle.textContent = 'Time up';
+                    els.winnerMessage.textContent = 'Scores tied. Please declare a winner.';
+                    els.winnerActions.classList.remove('hidden');
+                    els.winnerModal.classList.remove('hidden');
+                }
+                return;
+            }
+            state.timer.remaining -= 1;
+            updateTimerDisplay();
+        }, 1000);
+    };
+
+    const stopTimer = () => {
+        if (state.timer.intervalId) {
+            clearInterval(state.timer.intervalId);
+            state.timer.intervalId = null;
+        }
+        state.timer.ticking = false;
+        els.startPauseBtn.innerHTML = '&#9658;';
+    };
+
+    const resetTimer = () => {
+        stopTimer();
+        state.timer.remaining = state.timer.duration;
+        updateTimerDisplay();
+    };
+
+    const handleScoreChange = (team, delta, label) => {
+        if (state.controlsLocked) return;
+        const next = state.scores[team] + delta;
+        state.scores[team] = Math.max(0, next);
+        updateScoreDisplays();
+        recordLog(`${team.toUpperCase()} score ${delta > 0 ? '+' : ''}${delta} (${label}) → ${state.scores[team]}`);
+        checkGapRule();
+    };
+
+    const handlePenalty = (btn) => {
+        if (state.controlsLocked) return;
+        btn.classList.toggle('active');
+        const team = btn.closest('.penalty-grid').dataset.team;
+        const penalty = btn.dataset.penalty;
+        if (btn.classList.contains('active')) {
+            state.penalties[team].push(penalty);
+            recordLog(`${team.toUpperCase()} penalty: ${penalty}`);
+        } else {
+            state.penalties[team] = state.penalties[team].filter((p) => p !== penalty);
+            recordLog(`${team.toUpperCase()} penalty cleared: ${penalty}`);
+        }
+    };
+
+    const toggleSenshu = (indicator) => {
+        if (state.controlsLocked) return;
+        const team = indicator.dataset.team;
+        const other = team === 'ao' ? els.akaSenshu : els.aoSenshu;
+        indicator.classList.toggle('active');
+        if (indicator.classList.contains('active')) {
+            other.classList.remove('active');
+            recordLog(`${team.toUpperCase()} gains Senshu`);
+        } else {
+            recordLog(`${team.toUpperCase()} loses Senshu`);
+        }
+    };
+
+    const checkGapRule = () => {
+        const gap = Math.abs(state.scores.ao - state.scores.aka);
+        if (gap >= GAP_LIMIT) {
+            const winner = state.scores.ao > state.scores.aka ? 'ao' : 'aka';
+            declareWinner(winner, `${GAP_LIMIT}-point gap reached`);
+        }
+    };
+
+    const decideWinnerByScore = () => {
+        if (state.scores.ao === state.scores.aka) return null;
+        return state.scores.ao > state.scores.aka ? 'ao' : 'aka';
+    };
+
+    /**
+     * Logging helpers
+     */
+    const recordLog = (line) => {
+        const stamp = new Date().toLocaleTimeString();
+        state.logBuffer.push(`[${stamp}] ${line}`);
+    };
+
+    const getStoredLogs = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+    const persistLogs = (logs) => localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+
+    const saveMatchLog = (winnerTeam, reason) => {
+        const logs = getStoredLogs();
+        const start = state.matchStartTime ? state.matchStartTime.toISOString() : new Date().toISOString();
+        const end = new Date().toISOString();
+        const timerLabel = formatClock(state.timer.duration);
+        const winnerName = winnerTeam === 'ao' ? els.aoNameInput.value : els.akaNameInput.value;
+        const loserName = winnerTeam === 'ao' ? els.akaNameInput.value : els.aoNameInput.value;
+        const header = [
+            `Match Start: ${start}`,
+            `Match End: ${end}`,
+            `Round: ${state.roundCount}`,
+            `Configured Time: ${timerLabel}`,
+            `Winner: ${winnerName}`,
+            `Loser: ${loserName}`,
+            `Reason: ${reason}`,
+            `Bracket Position: Round ${state.tournament.active.roundIndex + 1} Match ${state.tournament.active.matchIndex + 1}`,
+            `Division: ${state.tournament.division.gender} ${state.tournament.division.weightClass}`,
+            `Referee: ${els.refereeInput.value || 'N/A'}`,
+        ];
+        const body = header.concat(['--- Events ---', ...state.logBuffer, '--- Scoreboard ---', `AO: ${state.scores.ao}`, `AKA: ${state.scores.aka}`]);
+        const content = body.join('\n');
+        const filename = `match-${end.replace(/[:T]/g, '-').split('.')[0]}.txt`;
+        logs.unshift({ id: Date.now(), filename, content });
+        persistLogs(logs);
+    };
+
+    const renderHistoryList = (logs) => {
+        els.historyList.innerHTML = '';
+        if (!logs.length) {
+            els.historyPreview.textContent = 'No saved matches yet.';
+            return;
+        }
+
+        els.historyPreview.textContent = 'Select a log to preview its contents.';
+
+        logs.forEach((log) => {
+            const li = document.createElement('li');
+            li.dataset.logId = log.id;
+
+            const selectBtn = document.createElement('button');
+            selectBtn.type = 'button';
+            selectBtn.className = 'history-entry';
+            selectBtn.textContent = log.filename;
+            selectBtn.addEventListener('click', () => {
+                els.historyList.querySelectorAll('li').forEach((item) => item.classList.remove('active'));
+                li.classList.add('active');
+                els.historyPreview.textContent = log.content;
+            });
+
+            const pdfBtn = document.createElement('button');
+            pdfBtn.type = 'button';
+            pdfBtn.className = 'history-download-btn';
+            pdfBtn.textContent = 'Download PDF';
+            pdfBtn.addEventListener('click', (evt) => {
+                evt.stopPropagation();
+                downloadLogAsPdf(log);
+            });
+
+            li.appendChild(selectBtn);
+            li.appendChild(pdfBtn);
+            els.historyList.appendChild(li);
+        });
+    };
+
+    const openHistoryModal = () => {
+        renderHistoryList(getStoredLogs());
+        els.historyModal.classList.remove('hidden');
+    };
+
+    const closeHistoryModal = () => els.historyModal.classList.add('hidden');
+
+    const eraseHistory = () => {
+        if (!window.confirm('Erase all saved match history? This cannot be undone.')) return;
+        persistLogs([]);
+        renderHistoryList([]);
+    };
+
+    const escapePdfText = (text) => text
+        .replace(/\\/g, '\\\\')
+        .replace(/\(/g, '\\(')
+        .replace(/\)/g, '\\)');
+
+    const wrapPdfLines = (text) => {
+        const wrapped = [];
+        const rawLines = text.split('\n');
+        rawLines.forEach((line) => {
+            let working = line || ' ';
+            while (working.length > PDF_LINE_LIMIT) {
+                wrapped.push(working.slice(0, PDF_LINE_LIMIT));
+                working = working.slice(PDF_LINE_LIMIT);
+            }
+            wrapped.push(working.length ? working : ' ');
+        });
+        return wrapped;
+    };
+
+    const createPdfBlob = (text) => {
+        const lines = wrapPdfLines(text).map(escapePdfText);
+        const maxLinesPerPage = Math.floor((PDF_PAGE.height - (PDF_PAGE.margin * 2)) / PDF_PAGE.lineHeight);
+        const chunks = [];
+        for (let i = 0; i < lines.length; i += maxLinesPerPage) {
+            chunks.push(lines.slice(i, i + maxLinesPerPage));
+        }
+        if (!chunks.length) chunks.push([' ']);
+
+        const objects = [];
+        const addObject = (body) => {
+            objects.push(body);
+            return objects.length;
+        };
+
+        addObject('<< /Type /Catalog /Pages 2 0 R >>'); // 1
+        const pagesIndex = addObject('__PAGES__'); // 2 placeholder
+        const fontIndex = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'); // 3
+        const pageNumbers = [];
+
+        chunks.forEach((chunk) => {
+            let contentStream = 'BT\n/F1 12 Tf\n14 TL\n';
+            contentStream += `50 ${PDF_PAGE.height - PDF_PAGE.margin} Td\n`;
+            chunk.forEach((line, idx) => {
+                if (idx > 0) contentStream += 'T*\n';
+                contentStream += `(${line || ' '}) Tj\n`;
+            });
+            contentStream += 'ET';
+            const contentIndex = addObject(`<< /Length ${contentStream.length} >>\nstream\n${contentStream}\nendstream`);
+            const pageIndex = addObject(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PDF_PAGE.width} ${PDF_PAGE.height}] /Contents ${contentIndex} 0 R /Resources << /Font << /F1 ${fontIndex} 0 R >> >> >>`);
+            pageNumbers.push(pageIndex);
+        });
+
+        objects[pagesIndex - 1] = `<< /Type /Pages /Kids [${pageNumbers.map((num) => `${num} 0 R`).join(' ')}] /Count ${pageNumbers.length} >>`;
+
+        let pdf = '%PDF-1.4\n';
+        const offsets = [0];
+        objects.forEach((body, idx) => {
+            offsets[idx + 1] = pdf.length;
+            pdf += `${idx + 1} 0 obj\n${body}\nendobj\n`;
+        });
+        const xrefPosition = pdf.length;
+        pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+        for (let i = 1; i <= objects.length; i += 1) {
+            pdf += `${offsets[i].toString().padStart(10, '0')} 00000 n \n`;
+        }
+        pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefPosition}\n%%EOF`;
+        return new Blob([pdf], { type: 'application/pdf' });
+    };
+
+    const downloadLogAsPdf = (log) => {
+        const blob = createPdfBlob(log.content);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = log.filename.replace('.txt', '.pdf');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(link.href), 0);
+    };
+
+    /**
+     * Winner & match flow
+     */
+    const declareWinner = (team, reason) => {
+        stopTimer();
+        lockControls(true);
+        const winnerName = team === 'ao' ? els.aoNameInput.value : els.akaNameInput.value;
+        const loserName = team === 'ao' ? els.akaNameInput.value : els.aoNameInput.value;
+        els.winnerTitle.textContent = `${winnerName} wins!`;
+        els.winnerMessage.textContent = `${winnerName} defeated ${loserName}. Reason: ${reason}.`;
+        els.winnerActions.classList.add('hidden');
+        els.winnerModal.classList.remove('hidden');
+        saveMatchLog(team, reason);
+        advanceBracket(team);
+    };
+
+    const advanceBracket = (winnerTeam) => {
+        const { rounds, active } = state.tournament;
+        const match = rounds[active.roundIndex][active.matchIndex];
+        match.complete = true;
+        const winnerIndex = winnerTeam === 'ao' ? 0 : 1;
+        match.winner = winnerIndex;
+
+        const nextRound = rounds[active.roundIndex + 1];
+        if (nextRound) {
+            const targetMatch = nextRound[Math.floor(active.matchIndex / 2)];
+            if (targetMatch) {
+                targetMatch.players[active.matchIndex % 2] = { name: winnerIndex === 0 ? els.aoNameInput.value : els.akaNameInput.value };
+            }
+        }
+
+        renderBracket();
+    };
+
+    const closeWinnerModal = () => {
+        els.winnerModal.classList.add('hidden');
+    };
+
+    const loadNextMatch = () => {
+        const { active, rounds } = state.tournament;
+        const nextIndex = active.matchIndex + 1;
+        if (nextIndex < rounds[active.roundIndex].length) {
+            state.tournament.active.matchIndex = nextIndex;
+        } else if (active.roundIndex + 1 < rounds.length) {
+            state.tournament.active.roundIndex += 1;
+            state.tournament.active.matchIndex = 0;
+        } else {
+            showToast('Tournament complete!');
+            return;
+        }
+        state.roundCount += 1;
+        updateRoundUI();
+        prepareMatch();
+    };
+
+    const updateRoundUI = () => {
+        els.roundNumber.textContent = state.roundCount;
+        showToast(`Round ${state.roundCount} – Get Ready`);
+    };
+
+    const prepareMatch = () => {
+        resetScores();
+        resetPenalties();
+        resetSenshu();
+        state.logBuffer = [];
+        state.matchStartTime = null;
+        lockControls(false);
+        resetTimer();
+        const { roundIndex, matchIndex } = state.tournament.active;
+        const match = state.tournament.rounds[roundIndex][matchIndex];
+        const [playerA = { name: 'TBD' }, playerB = { name: 'TBD' }] = match.players;
+        els.aoNameInput.value = playerA.name;
+        els.akaNameInput.value = playerB.name;
+        recordLog(`Match ready: ${playerA.name} vs ${playerB.name}`);
+        renderBracket();
+    };
+
+    /**
+     * Swap logic
+     */
+    const swapSides = () => {
+        if (state.controlsLocked) return;
+        const left = document.querySelector('.team[data-side="left"]');
+        const right = document.querySelector('.team[data-side="right"]');
+        left.classList.toggle('ao');
+        left.classList.toggle('aka');
+        right.classList.toggle('ao');
+        right.classList.toggle('aka');
+
+        const aoName = els.aoNameInput.value;
+        const akaName = els.akaNameInput.value;
+        const aoScore = state.scores.ao;
+        const akaScore = state.scores.aka;
+
+        els.aoNameInput.value = akaName;
+        els.akaNameInput.value = aoName;
+        state.scores.ao = akaScore;
+        state.scores.aka = aoScore;
+        updateScoreDisplays();
+
+        const aoSenshuActive = els.aoSenshu.classList.contains('active');
+        const akaSenshuActive = els.akaSenshu.classList.contains('active');
+        els.aoSenshu.classList.toggle('active', akaSenshuActive);
+        els.akaSenshu.classList.toggle('active', aoSenshuActive);
+
+        recordLog('Sides swapped (names & colors)');
+    };
+
+    /**
+     * Fullscreen helpers
+     */
+    const getFullscreenElement = () => document.fullscreenElement
+        || document.webkitFullscreenElement
+        || document.mozFullScreenElement
+        || document.msFullscreenElement;
+
+    const requestFullscreen = (element) => {
+        if (!element) return Promise.reject(new Error('No fullscreen target'));
+        if (element.requestFullscreen) return element.requestFullscreen();
+        if (element.webkitRequestFullscreen) return element.webkitRequestFullscreen();
+        if (element.mozRequestFullScreen) return element.mozRequestFullScreen();
+        if (element.msRequestFullscreen) return element.msRequestFullscreen();
+        return Promise.reject(new Error('Fullscreen not supported'));
+    };
+
+    const exitFullscreen = () => {
+        if (document.exitFullscreen) return document.exitFullscreen();
+        if (document.webkitExitFullscreen) return document.webkitExitFullscreen();
+        if (document.mozCancelFullScreen) return document.mozCancelFullScreen();
+        if (document.msExitFullscreen) return document.msExitFullscreen();
+        return Promise.resolve();
+    };
+
+    const toggleFullscreen = () => {
+        if (!els.scoreboardUi) return;
+        const activeElement = getFullscreenElement();
+        if (activeElement === els.scoreboardUi) {
+            exitFullscreen();
+        } else if (!activeElement) {
+            requestFullscreen(els.scoreboardUi).catch(() => {});
+        } else {
+            exitFullscreen().then(() => requestFullscreen(els.scoreboardUi)).catch(() => {});
+        }
+    };
+
+    /**
+     * Event wiring
+     */
+    populateMatchDurations();
+    populateWeightClasses(els.genderSelect.value);
+    renderPlayerInputs();
+    syncDivisionSelection();
+    els.playerCountSelect.addEventListener('change', renderPlayerInputs);
+    els.genderSelect.addEventListener('change', () => {
+        populateWeightClasses(els.genderSelect.value);
+        syncDivisionSelection();
+    });
+    els.weightSelect.addEventListener('change', syncDivisionSelection);
+
+    els.startTournamentBtn.addEventListener('click', () => {
+        const playerNames = gatherPlayerNames();
+        if (!playerNames.length) return;
+        state.tournament.playerCount = playerNames.length;
+        state.tournament.players = playerNames;
+        state.tournament.active = { roundIndex: 0, matchIndex: 0 };
+        syncDivisionSelection();
+        createInitialBracket(playerNames);
+        renderBracket();
+        setTimerDuration(secondsFromLabel(els.matchDurationSelect.value));
+        els.setupOverlay.classList.add('hidden');
+        state.roundCount = 1;
+        updateRoundUI();
+        prepareMatch();
+        recordLog(`Match duration set to ${els.matchDurationSelect.value}`);
+    });
+
+    els.matchDurationSelect.addEventListener('change', () => {
+        if (state.timer.ticking || !state.controlsLocked) {
+            // Prevent changing during match
+            els.matchDurationSelect.value = formatClock(state.timer.duration);
+            return;
+        }
+        setTimerDuration(secondsFromLabel(els.matchDurationSelect.value));
+    });
+
+    els.startPauseBtn.addEventListener('click', () => {
+        if (state.controlsLocked) return;
+        if (state.timer.ticking) {
+            stopTimer();
+            recordLog('Timer paused');
+        } else {
+            startTimer();
+            recordLog('Timer started');
+        }
+    });
+
+    els.resetBtn.addEventListener('click', () => {
+        stopTimer();
+        prepareMatch();
+        recordLog('Match reset');
+    });
+
+    els.scoreButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const team = btn.dataset.team;
+            const delta = Number(btn.dataset.points);
+            const label = btn.textContent.trim();
+            handleScoreChange(team, delta, label);
+        });
+    });
+
+    els.penaltyButtons.forEach((btn) => {
+        btn.addEventListener('click', () => handlePenalty(btn));
+    });
+
+    [els.aoSenshu, els.akaSenshu].forEach((indicator) => {
+        indicator.addEventListener('click', () => toggleSenshu(indicator));
+    });
+
+    els.swapBtn.addEventListener('click', swapSides);
+
+    els.historyTriggers.forEach((btn) => btn.addEventListener('click', openHistoryModal));
+    els.historyClose.addEventListener('click', closeHistoryModal);
+    if (els.eraseHistoryBtn) {
+        els.eraseHistoryBtn.addEventListener('click', eraseHistory);
     }
+
+    els.winnerModalClose.addEventListener('click', closeWinnerModal);
+    els.winnerDeclareAo.addEventListener('click', () => declareWinner('ao', 'Manual decision'));
+    els.winnerDeclareAka.addEventListener('click', () => declareWinner('aka', 'Manual decision'));
+    els.winnerNextBtn.addEventListener('click', () => {
+        closeWinnerModal();
+        loadNextMatch();
+    });
+
+    if (els.fullscreenBtn) {
+        els.fullscreenBtn.addEventListener('click', toggleFullscreen);
+        const fullscreenEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
+        const handleFsChange = () => {
+            const active = getFullscreenElement() === els.scoreboardUi;
+            els.fullscreenBtn.classList.toggle('active', active);
+        };
+        fullscreenEvents.forEach((evt) => document.addEventListener(evt, handleFsChange));
+    }
+
+    // Initialize timer display with default
+    lockControls(true);
+    updateTimerDisplay();
 });
 
-// Init
-timerDisplay.textContent = formatTime(MAX_TIME);
