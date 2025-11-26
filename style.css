@@ -164,6 +164,33 @@ body {
     font-size: 0.95rem;
 }
 
+.player-input {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.player-flag-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: #999;
+}
+
+.player-flag-row input[type="file"] {
+    font-size: 0.75rem;
+}
+
+.player-flag-preview {
+    width: 28px;
+    height: 20px;
+    border-radius: 3px;
+    border: 1px solid #333;
+    object-fit: cover;
+    display: none;
+}
+
 .setup-actions {
     margin-top: 25px;
     display: flex;
@@ -177,6 +204,26 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 15px;
+}
+
+.scoreboard-flags {
+    width: min(950px, 95vw);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    margin-top: 4px;
+}
+
+.scoreboard-flag,
+.controls-flag {
+    height: 28px;
+    width: auto;
+    object-fit: contain;
+}
+
+.controls-flag {
+    opacity: 0.9;
 }
 
 #scoreboard-ui:fullscreen {
@@ -539,6 +586,7 @@ body {
 
 .round-column {
     min-width: 180px;
+    position: relative;
 }
 
 .round-column h4 {
@@ -556,6 +604,7 @@ body {
     margin-bottom: 12px;
     background: #111;
     box-shadow: inset 0 0 15px rgba(0,0,0,0.4);
+    position: relative;
 }
 
 .match-card .match-title {
@@ -582,6 +631,34 @@ body {
 
 .match-card.winner-known {
     border-color: var(--color-yellow);
+}
+
+.bracket-flag {
+    height: 16px;
+    width: auto;
+    object-fit: contain;
+    margin-right: 4px;
+    border-radius: 2px;
+}
+
+.round-column:not(:last-child) .match-card::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: -15px;
+    width: 15px;
+    border-top: 1px solid #444;
+    opacity: 0.6;
+}
+
+.round-column:not(:first-child)::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    border-left: 1px solid #333;
+    opacity: 0.35;
 }
 
 .modal {

@@ -36,6 +36,10 @@ document.addEventListener('DOMContentLoaded', () => {
         timerDisplay: document.getElementById('timer'),
         fullscreenBtn: document.getElementById('fullscreen-btn'),
         scoreboardUi: document.getElementById('scoreboard-ui'),
+        aoFlagScore: document.getElementById('ao-flag-score'),
+        akaFlagScore: document.getElementById('aka-flag-score'),
+        aoFlagControls: document.getElementById('ao-flag-controls'),
+        akaFlagControls: document.getElementById('aka-flag-controls'),
         swapBtn: document.getElementById('swap-sides-btn'),
         historyModal: document.getElementById('history-modal'),
         historyList: document.getElementById('history-list'),
@@ -74,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
             active: { roundIndex: 0, matchIndex: 0 },
             division: { gender: 'Male', weightClass: WEIGHT_CLASSES.Male[0] },
         },
+        playerFlags: {},
         controlsLocked: true,
     };
 
@@ -108,13 +113,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const count = Number(els.playerCountSelect.value);
         els.playerGrid.innerHTML = '';
         for (let i = 1; i <= count; i += 1) {
+            const index = i - 1;
             const wrapper = document.createElement('label');
             wrapper.className = 'player-input';
             wrapper.innerHTML = `
                 Player ${i}
-                <input type="text" data-player-index="${i - 1}" placeholder="Enter name">
+                <input type="text" data-player-index="${index}" placeholder="Enter name">
+                <div class="player-flag-row">
+                    <input type="file" accept="image/*" data-player-flag="${index}">
+                    <img class="player-flag-preview" data-player-flag-preview="${index}" alt="Flag preview">
+                </div>
             `;
             els.playerGrid.appendChild(wrapper);
+            const preview = wrapper.querySelector('.player-flag-preview');
+            const existingFlag = state.playerFlags[index];
+            if (existingFlag && preview) {
+                preview.src = existingFlag;
+                preview.style.display = 'block';
+            }
         }
     };
 
@@ -149,14 +165,28 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     };
 
-    const gatherPlayerNames = () => {
-        const inputs = els.playerGrid.querySelectorAll('input');
-        return Array.from(inputs).map((input, index) => input.value.trim() || `Player ${index + 1}`);
+    const gatherPlayerConfigs = () => {
+        const inputs = els.playerGrid.querySelectorAll('input[data-player-index]');
+        return Array.from(inputs).map((input) => {
+            const idx = Number(input.dataset.playerIndex);
+            const name = input.value.trim() || `Player ${idx + 1}`;
+            const flag = state.playerFlags[idx] || null;
+            return { name, seed: idx + 1, flag };
+        });
     };
 
     const createInitialBracket = (players) => {
         const rounds = [];
-        let currentPlayers = players.map((name, idx) => ({ name, seed: idx + 1 }));
+        let currentPlayers = players.map((entry, idx) => {
+            if (typeof entry === 'string') {
+                return { name: entry, seed: idx + 1, flag: null };
+            }
+            return {
+                name: entry.name,
+                seed: entry.seed ?? idx + 1,
+                flag: entry.flag || null,
+            };
+        });
         let roundIndex = 0;
 
         while (currentPlayers.length > 1) {
@@ -170,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
             rounds.push(roundMatches);
-            currentPlayers = roundMatches.map(() => ({ name: 'TBD', seed: null }));
+            currentPlayers = roundMatches.map(() => ({ name: 'TBD', seed: null, flag: null }));
             roundIndex += 1;
         }
 
@@ -188,12 +218,16 @@ document.addEventListener('DOMContentLoaded', () => {
             column.appendChild(title);
 
             matches.forEach((match) => {
+                const p1 = match.players[0] || {};
+                const p2 = match.players[1] || {};
+                const p1Flag = p1.flag ? `<img src="${p1.flag}" alt="" class="bracket-flag">` : '';
+                const p2Flag = p2.flag ? `<img src="${p2.flag}" alt="" class="bracket-flag">` : '';
                 const card = document.createElement('div');
                 card.className = `match-card ${match.winner ? 'winner-known' : ''}`;
                 card.innerHTML = `
                     <div class="match-title">${match.id}</div>
-                    <div class="competitor">${match.players[0]?.name || 'TBD'} <span>${match.winner === 0 ? '✔' : ''}</span></div>
-                    <div class="competitor">${match.players[1]?.name || 'TBD'} <span>${match.winner === 1 ? '✔' : ''}</span></div>
+                    <div class="competitor">${p1Flag}<span>${p1.name || 'TBD'}</span> <span>${match.winner === 0 ? '✔' : ''}</span></div>
+                    <div class="competitor">${p2Flag}<span>${p2.name || 'TBD'}</span> <span>${match.winner === 1 ? '✔' : ''}</span></div>
                 `;
                 column.appendChild(card);
             });
@@ -529,7 +563,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (nextRound) {
             const targetMatch = nextRound[Math.floor(active.matchIndex / 2)];
             if (targetMatch) {
-                targetMatch.players[active.matchIndex % 2] = { name: winnerIndex === 0 ? els.aoNameInput.value : els.akaNameInput.value };
+                const winnerPlayer = match.players[winnerIndex] || { name: winnerIndex === 0 ? els.aoNameInput.value : els.akaNameInput.value, flag: null, seed: null };
+                targetMatch.players[active.matchIndex % 2] = { ...winnerPlayer };
             }
         }
 
@@ -572,9 +607,23 @@ document.addEventListener('DOMContentLoaded', () => {
         resetTimer();
         const { roundIndex, matchIndex } = state.tournament.active;
         const match = state.tournament.rounds[roundIndex][matchIndex];
-        const [playerA = { name: 'TBD' }, playerB = { name: 'TBD' }] = match.players;
+        const [playerA = { name: 'TBD', flag: null }, playerB = { name: 'TBD', flag: null }] = match.players;
         els.aoNameInput.value = playerA.name;
         els.akaNameInput.value = playerB.name;
+        const applyFlag = (img, src) => {
+            if (!img) return;
+            if (src) {
+                img.src = src;
+                img.style.display = 'block';
+            } else {
+                img.removeAttribute('src');
+                img.style.display = 'none';
+            }
+        };
+        applyFlag(els.aoFlagScore, playerA.flag);
+        applyFlag(els.akaFlagScore, playerB.flag);
+        applyFlag(els.aoFlagControls, playerA.flag);
+        applyFlag(els.akaFlagControls, playerB.flag);
         recordLog(`Match ready: ${playerA.name} vs ${playerB.name}`);
         renderBracket();
     };
@@ -661,14 +710,42 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     els.weightSelect.addEventListener('change', syncDivisionSelection);
 
+    els.playerGrid.addEventListener('change', (event) => {
+        const input = event.target;
+        if (!(input instanceof HTMLInputElement)) return;
+        if (input.type !== 'file' || !input.dataset.playerFlag) return;
+        const index = Number(input.dataset.playerFlag);
+        const file = input.files && input.files[0];
+        if (!file) {
+            delete state.playerFlags[index];
+            const preview = els.playerGrid.querySelector(`.player-flag-preview[data-player-flag-preview="${index}"]`);
+            if (preview) {
+                preview.removeAttribute('src');
+                preview.style.display = 'none';
+            }
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = typeof reader.result === 'string' ? reader.result : '';
+            state.playerFlags[index] = result;
+            const preview = els.playerGrid.querySelector(`.player-flag-preview[data-player-flag-preview="${index}"]`);
+            if (preview) {
+                preview.src = result;
+                preview.style.display = 'block';
+            }
+        };
+        reader.readAsDataURL(file);
+    });
+
     els.startTournamentBtn.addEventListener('click', () => {
-        const playerNames = gatherPlayerNames();
-        if (!playerNames.length) return;
-        state.tournament.playerCount = playerNames.length;
-        state.tournament.players = playerNames;
+        const playerConfigs = gatherPlayerConfigs();
+        if (!playerConfigs.length) return;
+        state.tournament.playerCount = playerConfigs.length;
+        state.tournament.players = playerConfigs;
         state.tournament.active = { roundIndex: 0, matchIndex: 0 };
         syncDivisionSelection();
-        createInitialBracket(playerNames);
+        createInitialBracket(playerConfigs);
         renderBracket();
         setTimerDuration(secondsFromLabel(els.matchDurationSelect.value));
         els.setupOverlay.classList.add('hidden');
