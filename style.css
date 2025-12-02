@@ -217,7 +217,7 @@ body {
 
 .scoreboard-flag,
 .controls-flag {
-    height: 28px;
+    height: 58px;
     width: auto;
     object-fit: contain;
 }
