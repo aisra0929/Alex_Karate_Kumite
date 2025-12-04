@@ -13,6 +13,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const PDF_PAGE = { width: 612, height: 792, margin: 50, lineHeight: 14 };
 
     const els = {
+        // --- NEW ELEMENTS ---
+        landingPage: document.getElementById('landing-page'),
+        enterSiteBtn: document.getElementById('enter-site-btn'),
+        appShell: document.getElementById('main-app-shell'),
+        backToLandingBtn: document.getElementById('back-to-landing-btn'),
+
+        // --- EXISTING ELEMENTS ---
         setupOverlay: document.getElementById('setup-screen'),
         playerCountSelect: document.getElementById('player-count-select'),
         playerGrid: document.getElementById('player-name-grid'),
@@ -82,9 +89,25 @@ document.addEventListener('DOMContentLoaded', () => {
         controlsLocked: true,
     };
 
-    /**
-     * Utility helpers
-     */
+    // Navigation Logic
+    if (els.enterSiteBtn) {
+        els.enterSiteBtn.addEventListener('click', () => {
+            els.landingPage.classList.add('hidden');
+            els.appShell.classList.remove('hidden');
+            els.setupOverlay.classList.remove('hidden');
+        });
+    }
+
+    if (els.backToLandingBtn) {
+        els.backToLandingBtn.addEventListener('click', () => {
+            els.appShell.classList.add('hidden');
+            els.landingPage.classList.remove('hidden');
+            els.setupOverlay.classList.add('hidden');
+            if (getFullscreenElement()) exitFullscreen();
+        });
+    }
+
+    // Helpers
     const secondsFromLabel = (label) => {
         const [m, s] = label.split(':').map(Number);
         return (m * 60) + s;
@@ -106,9 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 2500);
     };
 
-    /**
-     * Setup screen
-     */
+    // Setup Logic
     const renderPlayerInputs = () => {
         const count = Number(els.playerCountSelect.value);
         els.playerGrid.innerHTML = '';
@@ -118,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
             wrapper.className = 'player-input';
             wrapper.innerHTML = `
                 Player ${i}
-                <input type="text" data-player-index="${index}" placeholder="Enter name">
+                <input type="text" data-player-index="${index}" placeholder="Enter Name">
                 <div class="player-flag-row">
                     <input type="file" accept="image/*" data-player-flag="${index}">
                     <img class="player-flag-preview" data-player-flag-preview="${index}" alt="Flag preview">
@@ -169,7 +190,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const inputs = els.playerGrid.querySelectorAll('input[data-player-index]');
         return Array.from(inputs).map((input) => {
             const idx = Number(input.dataset.playerIndex);
-            const name = input.value.trim() || `Player ${idx + 1}`;
+            // Default naming logic change: allow empty strings
+            const name = input.value.trim(); 
             const flag = state.playerFlags[idx] || null;
             return { name, seed: idx + 1, flag };
         });
@@ -178,9 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const createInitialBracket = (players) => {
         const rounds = [];
         let currentPlayers = players.map((entry, idx) => {
-            if (typeof entry === 'string') {
-                return { name: entry, seed: idx + 1, flag: null };
-            }
+            if (typeof entry === 'string') return { name: entry, seed: idx + 1, flag: null };
             return {
                 name: entry.name,
                 seed: entry.seed ?? idx + 1,
@@ -203,7 +223,6 @@ document.addEventListener('DOMContentLoaded', () => {
             currentPlayers = roundMatches.map(() => ({ name: 'TBD', seed: null, flag: null }));
             roundIndex += 1;
         }
-
         state.tournament.rounds = rounds;
     };
 
@@ -222,12 +241,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const p2 = match.players[1] || {};
                 const p1Flag = p1.flag ? `<img src="${p1.flag}" alt="" class="bracket-flag">` : '';
                 const p2Flag = p2.flag ? `<img src="${p2.flag}" alt="" class="bracket-flag">` : '';
+                
+                // Fallback for bracket visualization only
+                const p1Name = p1.name || `Player ${p1.seed || '?'}`;
+                const p2Name = p2.name || `Player ${p2.seed || '?'}`;
+
                 const card = document.createElement('div');
                 card.className = `match-card ${match.winner ? 'winner-known' : ''}`;
                 card.innerHTML = `
                     <div class="match-title">${match.id}</div>
-                    <div class="competitor">${p1Flag}<span>${p1.name || 'TBD'}</span> <span>${match.winner === 0 ? '✔' : ''}</span></div>
-                    <div class="competitor">${p2Flag}<span>${p2.name || 'TBD'}</span> <span>${match.winner === 1 ? '✔' : ''}</span></div>
+                    <div class="competitor">${p1Flag}<span>${p1Name}</span> <span>${match.winner === 0 ? '✔' : ''}</span></div>
+                    <div class="competitor">${p2Flag}<span>${p2Name}</span> <span>${match.winner === 1 ? '✔' : ''}</span></div>
                 `;
                 column.appendChild(card);
             });
@@ -238,9 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
         els.bracketStatus.textContent = `Round ${state.tournament.active.roundIndex + 1} • Match ${state.tournament.active.matchIndex + 1}${divisionLabel}`;
     };
 
-    /**
-     * Scoreboard helpers
-     */
+    // Scoreboard Helpers
     const updateScoreDisplays = () => {
         els.aoScore.textContent = state.scores.ao;
         els.akaScore.textContent = state.scores.aka;
@@ -367,16 +389,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return state.scores.ao > state.scores.aka ? 'ao' : 'aka';
     };
 
-    /**
-     * Logging helpers
-     */
+    // Logging
     const recordLog = (line) => {
         const stamp = new Date().toLocaleTimeString();
         state.logBuffer.push(`[${stamp}] ${line}`);
     };
-
     const getStoredLogs = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-
     const persistLogs = (logs) => localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
 
     const saveMatchLog = (winnerTeam, reason) => {
@@ -411,13 +429,10 @@ document.addEventListener('DOMContentLoaded', () => {
             els.historyPreview.textContent = 'No saved matches yet.';
             return;
         }
-
         els.historyPreview.textContent = 'Select a log to preview its contents.';
-
         logs.forEach((log) => {
             const li = document.createElement('li');
             li.dataset.logId = log.id;
-
             const selectBtn = document.createElement('button');
             selectBtn.type = 'button';
             selectBtn.className = 'history-entry';
@@ -427,7 +442,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.classList.add('active');
                 els.historyPreview.textContent = log.content;
             });
-
             const pdfBtn = document.createElement('button');
             pdfBtn.type = 'button';
             pdfBtn.className = 'history-download-btn';
@@ -436,7 +450,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 evt.stopPropagation();
                 downloadLogAsPdf(log);
             });
-
             li.appendChild(selectBtn);
             li.appendChild(pdfBtn);
             els.historyList.appendChild(li);
@@ -447,20 +460,15 @@ document.addEventListener('DOMContentLoaded', () => {
         renderHistoryList(getStoredLogs());
         els.historyModal.classList.remove('hidden');
     };
-
     const closeHistoryModal = () => els.historyModal.classList.add('hidden');
-
     const eraseHistory = () => {
         if (!window.confirm('Erase all saved match history? This cannot be undone.')) return;
         persistLogs([]);
         renderHistoryList([]);
     };
 
-    const escapePdfText = (text) => text
-        .replace(/\\/g, '\\\\')
-        .replace(/\(/g, '\\(')
-        .replace(/\)/g, '\\)');
-
+    // PDF Generation
+    const escapePdfText = (text) => text.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
     const wrapPdfLines = (text) => {
         const wrapped = [];
         const rawLines = text.split('\n');
@@ -474,7 +482,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         return wrapped;
     };
-
     const createPdfBlob = (text) => {
         const lines = wrapPdfLines(text).map(escapePdfText);
         const maxLinesPerPage = Math.floor((PDF_PAGE.height - (PDF_PAGE.margin * 2)) / PDF_PAGE.lineHeight);
@@ -485,16 +492,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!chunks.length) chunks.push([' ']);
 
         const objects = [];
-        const addObject = (body) => {
-            objects.push(body);
-            return objects.length;
-        };
-
-        addObject('<< /Type /Catalog /Pages 2 0 R >>'); // 1
-        const pagesIndex = addObject('__PAGES__'); // 2 placeholder
-        const fontIndex = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'); // 3
+        const addObject = (body) => { objects.push(body); return objects.length; };
+        addObject('<< /Type /Catalog /Pages 2 0 R >>');
+        const pagesIndex = addObject('__PAGES__');
+        const fontIndex = addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
         const pageNumbers = [];
-
         chunks.forEach((chunk) => {
             let contentStream = 'BT\n/F1 12 Tf\n14 TL\n';
             contentStream += `50 ${PDF_PAGE.height - PDF_PAGE.margin} Td\n`;
@@ -507,9 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const pageIndex = addObject(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PDF_PAGE.width} ${PDF_PAGE.height}] /Contents ${contentIndex} 0 R /Resources << /Font << /F1 ${fontIndex} 0 R >> >> >>`);
             pageNumbers.push(pageIndex);
         });
-
         objects[pagesIndex - 1] = `<< /Type /Pages /Kids [${pageNumbers.map((num) => `${num} 0 R`).join(' ')}] /Count ${pageNumbers.length} >>`;
-
         let pdf = '%PDF-1.4\n';
         const offsets = [0];
         objects.forEach((body, idx) => {
@@ -524,7 +524,6 @@ document.addEventListener('DOMContentLoaded', () => {
         pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefPosition}\n%%EOF`;
         return new Blob([pdf], { type: 'application/pdf' });
     };
-
     const downloadLogAsPdf = (log) => {
         const blob = createPdfBlob(log.content);
         const link = document.createElement('a');
@@ -536,9 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => URL.revokeObjectURL(link.href), 0);
     };
 
-    /**
-     * Winner & match flow
-     */
+    // Winner Flow
     const declareWinner = (team, reason) => {
         stopTimer();
         lockControls(true);
@@ -558,7 +555,6 @@ document.addEventListener('DOMContentLoaded', () => {
         match.complete = true;
         const winnerIndex = winnerTeam === 'ao' ? 0 : 1;
         match.winner = winnerIndex;
-
         const nextRound = rounds[active.roundIndex + 1];
         if (nextRound) {
             const targetMatch = nextRound[Math.floor(active.matchIndex / 2)];
@@ -567,14 +563,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 targetMatch.players[active.matchIndex % 2] = { ...winnerPlayer };
             }
         }
-
         renderBracket();
     };
 
-    const closeWinnerModal = () => {
-        els.winnerModal.classList.add('hidden');
-    };
-
+    const closeWinnerModal = () => els.winnerModal.classList.add('hidden');
     const loadNextMatch = () => {
         const { active, rounds } = state.tournament;
         const nextIndex = active.matchIndex + 1;
@@ -591,7 +583,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updateRoundUI();
         prepareMatch();
     };
-
     const updateRoundUI = () => {
         els.roundNumber.textContent = state.roundCount;
         showToast(`Round ${state.roundCount} – Get Ready`);
@@ -607,9 +598,13 @@ document.addEventListener('DOMContentLoaded', () => {
         resetTimer();
         const { roundIndex, matchIndex } = state.tournament.active;
         const match = state.tournament.rounds[roundIndex][matchIndex];
-        const [playerA = { name: 'TBD', flag: null }, playerB = { name: 'TBD', flag: null }] = match.players;
-        els.aoNameInput.value = playerA.name;
-        els.akaNameInput.value = playerB.name;
+        const [playerA = { name: '', flag: null }, playerB = { name: '', flag: null }] = match.players;
+        
+        // --- UPDATED LOGIC FOR DEFAULT NAMES ---
+        // If names are empty strings, fallback to AO/AKA
+        els.aoNameInput.value = playerA.name || 'AO';
+        els.akaNameInput.value = playerB.name || 'AKA';
+
         const applyFlag = (img, src) => {
             if (!img) return;
             if (src) {
@@ -624,13 +619,10 @@ document.addEventListener('DOMContentLoaded', () => {
         applyFlag(els.akaFlagScore, playerB.flag);
         applyFlag(els.aoFlagControls, playerA.flag);
         applyFlag(els.akaFlagControls, playerB.flag);
-        recordLog(`Match ready: ${playerA.name} vs ${playerB.name}`);
+        recordLog(`Match ready: ${els.aoNameInput.value} vs ${els.akaNameInput.value}`);
         renderBracket();
     };
 
-    /**
-     * Swap logic
-     */
     const swapSides = () => {
         if (state.controlsLocked) return;
         const left = document.querySelector('.team[data-side="left"]');
@@ -655,18 +647,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const akaSenshuActive = els.akaSenshu.classList.contains('active');
         els.aoSenshu.classList.toggle('active', akaSenshuActive);
         els.akaSenshu.classList.toggle('active', aoSenshuActive);
-
         recordLog('Sides swapped (names & colors)');
     };
 
-    /**
-     * Fullscreen helpers
-     */
-    const getFullscreenElement = () => document.fullscreenElement
-        || document.webkitFullscreenElement
-        || document.mozFullScreenElement
-        || document.msFullscreenElement;
-
+    const getFullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
     const requestFullscreen = (element) => {
         if (!element) return Promise.reject(new Error('No fullscreen target'));
         if (element.requestFullscreen) return element.requestFullscreen();
@@ -675,7 +659,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (element.msRequestFullscreen) return element.msRequestFullscreen();
         return Promise.reject(new Error('Fullscreen not supported'));
     };
-
     const exitFullscreen = () => {
         if (document.exitFullscreen) return document.exitFullscreen();
         if (document.webkitExitFullscreen) return document.webkitExitFullscreen();
@@ -683,33 +666,26 @@ document.addEventListener('DOMContentLoaded', () => {
         if (document.msExitFullscreen) return document.msExitFullscreen();
         return Promise.resolve();
     };
-
     const toggleFullscreen = () => {
-        if (!els.scoreboardUi) return;
+        const targetElement = els.appShell; 
         const activeElement = getFullscreenElement();
-        if (activeElement === els.scoreboardUi) {
+        if (activeElement === targetElement) {
             exitFullscreen();
         } else if (!activeElement) {
-            requestFullscreen(els.scoreboardUi).catch(() => {});
+            requestFullscreen(targetElement).catch(() => {});
         } else {
-            exitFullscreen().then(() => requestFullscreen(els.scoreboardUi)).catch(() => {});
+            exitFullscreen().then(() => requestFullscreen(targetElement)).catch(() => {});
         }
     };
 
-    /**
-     * Event wiring
-     */
+    // Wiring
     populateMatchDurations();
     populateWeightClasses(els.genderSelect.value);
     renderPlayerInputs();
     syncDivisionSelection();
     els.playerCountSelect.addEventListener('change', renderPlayerInputs);
-    els.genderSelect.addEventListener('change', () => {
-        populateWeightClasses(els.genderSelect.value);
-        syncDivisionSelection();
-    });
+    els.genderSelect.addEventListener('change', () => { populateWeightClasses(els.genderSelect.value); syncDivisionSelection(); });
     els.weightSelect.addEventListener('change', syncDivisionSelection);
-
     els.playerGrid.addEventListener('change', (event) => {
         const input = event.target;
         if (!(input instanceof HTMLInputElement)) return;
@@ -719,10 +695,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!file) {
             delete state.playerFlags[index];
             const preview = els.playerGrid.querySelector(`.player-flag-preview[data-player-flag-preview="${index}"]`);
-            if (preview) {
-                preview.removeAttribute('src');
-                preview.style.display = 'none';
-            }
+            if (preview) { preview.removeAttribute('src'); preview.style.display = 'none'; }
             return;
         }
         const reader = new FileReader();
@@ -730,10 +703,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = typeof reader.result === 'string' ? reader.result : '';
             state.playerFlags[index] = result;
             const preview = els.playerGrid.querySelector(`.player-flag-preview[data-player-flag-preview="${index}"]`);
-            if (preview) {
-                preview.src = result;
-                preview.style.display = 'block';
-            }
+            if (preview) { preview.src = result; preview.style.display = 'block'; }
         };
         reader.readAsDataURL(file);
     });
@@ -748,7 +718,10 @@ document.addEventListener('DOMContentLoaded', () => {
         createInitialBracket(playerConfigs);
         renderBracket();
         setTimerDuration(secondsFromLabel(els.matchDurationSelect.value));
-        els.setupOverlay.classList.add('hidden');
+        
+        els.setupOverlay.classList.add('hidden'); 
+        els.appShell.classList.remove('hidden'); 
+        
         state.roundCount = 1;
         updateRoundUI();
         prepareMatch();
@@ -756,31 +729,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     els.matchDurationSelect.addEventListener('change', () => {
-        if (state.timer.ticking || !state.controlsLocked) {
-            // Prevent changing during match
-            els.matchDurationSelect.value = formatClock(state.timer.duration);
-            return;
-        }
+        if (state.timer.ticking || !state.controlsLocked) { els.matchDurationSelect.value = formatClock(state.timer.duration); return; }
         setTimerDuration(secondsFromLabel(els.matchDurationSelect.value));
     });
-
     els.startPauseBtn.addEventListener('click', () => {
         if (state.controlsLocked) return;
-        if (state.timer.ticking) {
-            stopTimer();
-            recordLog('Timer paused');
-        } else {
-            startTimer();
-            recordLog('Timer started');
-        }
+        if (state.timer.ticking) { stopTimer(); recordLog('Timer paused'); } else { startTimer(); recordLog('Timer started'); }
     });
-
-    els.resetBtn.addEventListener('click', () => {
-        stopTimer();
-        prepareMatch();
-        recordLog('Match reset');
-    });
-
+    els.resetBtn.addEventListener('click', () => { stopTimer(); prepareMatch(); recordLog('Match reset'); });
     els.scoreButtons.forEach((btn) => {
         btn.addEventListener('click', () => {
             const team = btn.dataset.team;
@@ -789,43 +745,47 @@ document.addEventListener('DOMContentLoaded', () => {
             handleScoreChange(team, delta, label);
         });
     });
+   /* els.penaltyButtons.forEach((btn) => btn.addEventListener('click', () => handlePenalty(btn)));*/
+els.penaltyButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+            // Logic for PLUS button (Add 1 second)
+            if (btn.classList.contains('plus')) {
+                state.timer.remaining += 1;
+                updateTimerDisplay();
+                return; // Stop here (don't highlight)
+            }
 
-    els.penaltyButtons.forEach((btn) => {
-        btn.addEventListener('click', () => handlePenalty(btn));
+            // Logic for MINUS button (Subtract 1 second)
+            if (btn.classList.contains('minus')) {
+                // Prevent going below 0
+                state.timer.remaining = Math.max(0, state.timer.remaining - 1);
+                updateTimerDisplay();
+                return; // Stop here (don't highlight)
+            }
+
+            // Default behavior for all other penalty buttons (C1, C2, etc.)
+            handlePenalty(btn);
+        });
     });
-
-    [els.aoSenshu, els.akaSenshu].forEach((indicator) => {
-        indicator.addEventListener('click', () => toggleSenshu(indicator));
-    });
-
+    [els.aoSenshu, els.akaSenshu].forEach((indicator) => indicator.addEventListener('click', () => toggleSenshu(indicator)));
     els.swapBtn.addEventListener('click', swapSides);
-
     els.historyTriggers.forEach((btn) => btn.addEventListener('click', openHistoryModal));
     els.historyClose.addEventListener('click', closeHistoryModal);
-    if (els.eraseHistoryBtn) {
-        els.eraseHistoryBtn.addEventListener('click', eraseHistory);
-    }
-
+    if (els.eraseHistoryBtn) els.eraseHistoryBtn.addEventListener('click', eraseHistory);
     els.winnerModalClose.addEventListener('click', closeWinnerModal);
     els.winnerDeclareAo.addEventListener('click', () => declareWinner('ao', 'Manual decision'));
     els.winnerDeclareAka.addEventListener('click', () => declareWinner('aka', 'Manual decision'));
-    els.winnerNextBtn.addEventListener('click', () => {
-        closeWinnerModal();
-        loadNextMatch();
-    });
-
+    els.winnerNextBtn.addEventListener('click', () => { closeWinnerModal(); loadNextMatch(); });
     if (els.fullscreenBtn) {
         els.fullscreenBtn.addEventListener('click', toggleFullscreen);
         const fullscreenEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
         const handleFsChange = () => {
-            const active = getFullscreenElement() === els.scoreboardUi;
+            const active = getFullscreenElement() === els.appShell;
             els.fullscreenBtn.classList.toggle('active', active);
         };
         fullscreenEvents.forEach((evt) => document.addEventListener(evt, handleFsChange));
     }
 
-    // Initialize timer display with default
     lockControls(true);
     updateTimerDisplay();
 });
-

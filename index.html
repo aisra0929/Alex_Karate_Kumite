@@ -5,48 +5,93 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Karate Scoreboard</title>
     <link rel="icon" href="assets/favicon.png" type="image/png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div id="setup-screen" class="setup-overlay active">
-        <div class="setup-card">
-            <h2>Tournament Setup</h2>
-            <label class="field-label" for="player-count-select">How many players will participate?</label>
-            <select id="player-count-select" class="field-control">
-                <option value="2">2 Players</option>
-                <option value="4">4 Players</option>
-                <option value="8">8 Players</option>
-                <option value="16">16 Players</option>
-                <option value="32">32 Players</option>
-                <option value="64">64 Players</option>
-            </select>
+    <!-- ========================== -->
+    <!-- LANDING PAGE SECTION       -->
+    <!-- ========================== -->
+    <section id="landing-page" class="landing-container">
+        <div class="split-screen left-split">
+            <div class="landing-content">
+                <h1 class="main-headline">WELCOME TO EKF<br>SCOREBOARD</h1>
+                
+                <div class="landing-buttons">
+                    <button id="enter-site-btn" class="landing-btn filled">Start Tournament</button>
+                </div>
 
-            <div id="player-name-grid" class="player-name-grid"></div>
-
-            <label class="field-label" for="match-duration-select">Match Duration</label>
-            <select id="match-duration-select" class="field-control"></select>
-
-            <label class="field-label" for="gender-select">Gender</label>
-            <select id="gender-select" class="field-control">
-                <option value="Male" selected>Male</option>
-                <option value="Female">Female</option>
-            </select>
-
-            <label class="field-label" for="weight-class-select">Weight Class</label>
-            <select id="weight-class-select" class="field-control"></select>
-
-            <div class="setup-actions">
-                <button id="start-tournament-btn" class="primary-btn">Start Tournament</button>
-                <button class="ghost-btn" data-history-trigger>View History</button>
+                <p class="landing-desc">
+                    Professional Scoreboard System for EKF Tournaments. 
+                    Manage brackets, track scores, and handle match timers efficiently.
+                </p>
             </div>
         </div>
-    </div>
 
+        <div class="split-screen right-split">
+            <!-- Background Typography -->
+            <div class="bg-typography">
+                <span>ካራቴ ካራቴ ካራቴ</span>
+                <span>KARATE</span>
+                <span>ካራቴ ካራቴ ካራቴ</span>
+                <span>KARATE</span>
+            </div>
+
+            <!-- Central Action Image -->
+            <div class="hero-image-container">
+                <img src="assets/3d-figure.png" alt="Karate Fighter" class="hero-image">
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================== -->
+    <!-- SCOREBOARD APP SHELL       -->
+    <!-- ========================== -->
     <div id="round-banner" class="round-banner hidden">Round 1 – Get Ready</div>
 
-    <div class="app-shell">
+    <!-- Main App Shell (Hidden initially) -->
+    <div class="app-shell hidden" id="main-app-shell">
+        
+        <!-- Setup Screen (Overlay) -->
+        <div id="setup-screen" class="setup-overlay hidden">
+            <div class="setup-card">
+                <h2>Tournament Setup</h2>
+                <label class="field-label" for="player-count-select">How many players will participate?</label>
+                <select id="player-count-select" class="field-control">
+                    <option value="2">2 Players</option>
+                    <option value="4">4 Players</option>
+                    <option value="8">8 Players</option>
+                    <option value="16">16 Players</option>
+                    <option value="32">32 Players</option>
+                    <option value="64">64 Players</option>
+                </select>
+    
+                <div id="player-name-grid" class="player-name-grid"></div>
+    
+                <label class="field-label" for="match-duration-select">Match Duration</label>
+                <select id="match-duration-select" class="field-control"></select>
+    
+                <label class="field-label" for="gender-select">Gender</label>
+                <select id="gender-select" class="field-control">
+                    <option value="Male" selected>Male</option>
+                    <option value="Female">Female</option>
+                </select>
+    
+                <label class="field-label" for="weight-class-select">Weight Class</label>
+                <select id="weight-class-select" class="field-control"></select>
+    
+                <div class="setup-actions">
+                    <button id="start-tournament-btn" class="primary-btn">Start Tournament</button>
+                    <button class="ghost-btn" data-history-trigger>View History</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scoreboard Header -->
         <div class="shell-header">
+            <button id="back-to-landing-btn" class="ghost-btn">&larr; Home</button>
             <div class="round-indicator">Round <span id="round-number">1</span></div>
             <button id="history-btn" class="ghost-btn">View History</button>
         </div>
@@ -61,6 +106,7 @@
             <input type="text" class="referee-input" placeholder="Referee Name" id="referee-input">
         </div>
 
+        <!-- Scoreboard UI -->
         <div id="scoreboard-ui" class="scoreboard-suite">
             <div class="scoreboard">
                 <div class="top-section">
@@ -138,12 +184,10 @@
             </div>
 
             <div class="controls-section">
-               
                 <button id="reset-timer-btn" class="ctrl-btn" data-tooltip="Reset Match">&#128472;</button> 
                 <button id="start-pause-btn" class="ctrl-btn big-play" data-tooltip="Start/Pause">&#9658;</button>
                 <div class="winning-gap-info">Gap: <span id="winning-gap-value">8</span></div>
                 <button id="fullscreen-btn" class="ctrl-btn" data-tooltip="Fullscreen">&#x26F6;</button> 
-                
             </div>
         </div>
 
@@ -154,39 +198,40 @@
             </div>
             <div id="bracket-grid" class="bracket-grid"></div>
         </section>
-    </div>
 
-    <div id="history-modal" class="modal hidden">
-        <div class="modal-card">
-            <header class="modal-header history-header">
-                <h3>Match History</h3>
-                <div class="history-actions">
-                    <button id="erase-history-btn" class="ghost-btn danger-btn">Erase History</button>
-                    <button class="icon-btn" data-close-history>&times;</button>
+        <!-- Modals -->
+        <div id="history-modal" class="modal hidden">
+            <div class="modal-card">
+                <header class="modal-header history-header">
+                    <h3>Match History</h3>
+                    <div class="history-actions">
+                        <button id="erase-history-btn" class="ghost-btn danger-btn">Erase History</button>
+                        <button class="icon-btn" data-close-history>&times;</button>
+                    </div>
+                </header>
+                <div class="history-body">
+                    <aside class="history-list-wrapper">
+                        <ul id="history-list"></ul>
+                    </aside>
+                    <article id="history-preview" aria-live="polite">Select a log to preview its contents.</article>
                 </div>
-            </header>
-            <div class="history-body">
-                <aside class="history-list-wrapper">
-                    <ul id="history-list"></ul>
-                </aside>
-                <article id="history-preview" aria-live="polite">Select a log to preview its contents.</article>
             </div>
         </div>
-    </div>
 
-    <div id="winner-modal" class="modal hidden">
-        <div class="modal-card winner-card">
-            <header class="modal-header">
-                <h3 id="winner-title">Winner</h3>
-                <button class="icon-btn" id="winner-modal-close">&times;</button>
-            </header>
-            <p id="winner-message"></p>
-            <div class="winner-actions">
-                <button id="declare-ao-winner" class="ghost-btn">Declare AO Winner</button>
-                <button id="declare-aka-winner" class="ghost-btn">Declare AKA Winner</button>
-            </div>
-            <div class="winner-controls">
-                <button id="winner-modal-next" class="primary-btn">Load Next Match</button>
+        <div id="winner-modal" class="modal hidden">
+            <div class="modal-card winner-card">
+                <header class="modal-header">
+                    <h3 id="winner-title">Winner</h3>
+                    <button class="icon-btn" id="winner-modal-close">&times;</button>
+                </header>
+                <p id="winner-message"></p>
+                <div class="winner-actions">
+                    <button id="declare-ao-winner" class="ghost-btn">Declare AO Winner</button>
+                    <button id="declare-aka-winner" class="ghost-btn">Declare AKA Winner</button>
+                </div>
+                <div class="winner-controls">
+                    <button id="winner-modal-next" class="primary-btn">Load Next Match</button>
+                </div>
             </div>
         </div>
     </div>
